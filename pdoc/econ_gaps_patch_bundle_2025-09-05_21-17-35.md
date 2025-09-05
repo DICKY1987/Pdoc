@@ -134,7 +134,7 @@ symbol:
   - Fail closed on malformed timestamps (not `...Z`).
 - Tests:
   - Simulate power loss before/after rename.
-  - Corrupt checksum → reader discards.
+  - Corrupt checksum_sha256 → reader discards.
   - Non‑monotonic `file_seq` → reader ignores.
 
 <!-- DEPS: ECON.002.005.001.REQ.csv_dialect -->

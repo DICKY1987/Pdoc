@@ -194,7 +194,7 @@ This export captures the updated **Hierarchical Index (GI)** and all newly added
 ### 9.1 Columns
 - Time, symbol, kind, direction, strength, confidence, p, n, horizon, tags, source.
 - **Identifiers:** `hybrid_id`, `cal8`, `cal5`, and Hybrid components `GEN/SIG/DUR/OUT/PROX/SYMBOL`.
-- **Provenance:** `file_seq`, `checksum`, adapter mode, last revision id.
+- **Provenance:** `file_seq`, `checksum_sha256`, adapter mode, last revision id.
 
 ### 9.2 Interactions
 - Filters, click-through to Matrix via `hybrid_id`, and to Calendar for event rows.
@@ -232,7 +232,7 @@ This export captures the updated **Hierarchical Index (GI)** and all newly added
 
 ## 12) History/Analytics Tab
 ### 12.1 Logs
-- Signals, alerts, config/template changes; calendar/matrix ingestion with `file_seq`/`checksum`, promotion/demotion reasons, sequence gaps.
+- Signals, alerts, config/template changes; calendar/matrix ingestion with `file_seq`/`checksum_sha256`, promotion/demotion reasons, sequence gaps.
 
 ### 12.2 KPIs
 - Hit rate by source/kind, target time, confidence distribution.
@@ -261,7 +261,7 @@ This export captures the updated **Hierarchical Index (GI)** and all newly added
 
 ## 14) Economic Calendar Tab
 ### 14.1 Features
-- Active table columns: `symbol, cal8, cal5, signal_type, proximity, event_time_utc, state, priority_weight, file_seq, created_at_utc, checksum`.
+- Active table columns: `symbol, cal8, cal5, signal_type, proximity, event_time_utc, state, priority_weight, file_seq, created_at_utc, checksum_sha256`.
 - State chips: `SCHEDULED, ANTICIPATION, ACTIVE, COOLDOWN, EXPIRED`.
 - Proximity badges: `IM, SH, LG, EX, CD` with live countdown.
 - **Emergency controls:** **STOP Imports** (pause scheduler; mark rows `BLOCKED`) and **RESUME Imports**.

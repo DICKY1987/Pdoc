@@ -21,7 +21,7 @@ Defines the architecture, identifiers, data contracts, and operational processes
 - **CAL5**: Legacy 5‑digit calendar strategy ID (country+impact).
 - **CAL8**: Extended 8‑symbol identifier (Region|Country|Impact|EventType|RevisionFlag|Version) per @ECON.003.002.
 - **Hybrid ID**: Composite key joining calendar and matrix context per @ECON.003.004.
-- **PairEffect**: Per‑symbol effect model (bias/spread/cooldown) per @ECON.007.004.
+- **PairEffect**: Per‑symbol effect model (bias/spread/cooldown) per @ECON.007.003.
 <!-- END:ECON.000.005.001.DEF.glossary -->
 
 ---
@@ -58,16 +58,16 @@ Defines the architecture, identifiers, data contracts, and operational processes
 ## 2.1 Inter‑Process Contracts
 - **Transport**: CSV file drops on shared path; optional TCP/IPC later.
 - **Atomicity**: Writers output `*.tmp`, include `file_seq`, `created_at_utc`, `checksum_sha256`, then rename to final path (@ECON.002.003).
-- **Consumption Rule**: Readers process only strictly increasing `file_seq` with valid checksum.
+- **Consumption Rule**: Readers process only strictly increasing `file_seq` with valid checksum_sha256.
 <!-- DEPS: None -->
 <!-- AFFECTS: ECON.002.002, ECON.002.003, ECON.017 -->
 <!-- END:ECON.002.001.001.REQ.transport_contracts -->
 
 <!-- BEGIN:ECON.002.002.001.TABLE.csv_artifacts -->
 ## 2.2 CSV Artifacts
-- `active_calendar_signals.csv`: `symbol, cal8, cal5, signal_type, proximity, event_time_utc, state, priority_weight, file_seq, created_at_utc, checksum`
-- `reentry_decisions.csv`: `hybrid_id, parameter_set_id, lots, sl_points, tp_points, entry_offset_points, comment, file_seq, created_at_utc, checksum`
-- `trade_results.csv`: `file_seq, ts_utc, account_id, symbol, ticket, direction, lots, entry_price, close_price, profit_ccy, pips, open_time_utc, close_time_utc, sl_price, tp_price, magic_number, close_reason, signal_source, checksum`
+- `active_calendar_signals.csv`: `symbol, cal8, cal5, signal_type, proximity, event_time_utc, state, priority_weight, file_seq, created_at_utc, checksum_sha256`
+- `reentry_decisions.csv`: `hybrid_id, parameter_set_id, lots, sl_points, tp_points, entry_offset_points, comment, file_seq, created_at_utc, checksum_sha256`
+- `trade_results.csv`: `file_seq, ts_utc, account_id, symbol, ticket, direction, lots, entry_price, close_price, profit_ccy, pips, open_time_utc, close_time_utc, sl_price, tp_price, magic_number, close_reason, signal_source, checksum_sha256`
 - `health_metrics.csv`: rolling KPIs (@ECON.014.002)
 <!-- DEPS: ECON.002.001 -->
 <!-- AFFECTS: ECON.002.003, ECON.017.001, ECON.017.002 -->
@@ -76,7 +76,7 @@ Defines the architecture, identifiers, data contracts, and operational processes
 <!-- BEGIN:ECON.002.003.001.FLOW.atomic_write -->
 ## 2.3 Atomic Write Procedure
 1) Serialize rows → temp file with `file_seq`.
-2) Compute SHA‑256 checksum field; fsync.
+2) Compute `checksum_sha256` field; fsync.
 3) Rename `*.tmp` → final; notify via file watcher (optional).
 <!-- DEPS: ECON.002.001 -->
 <!-- AFFECTS: ECON.002.002, ECON.017.001, ECON.017.002 -->

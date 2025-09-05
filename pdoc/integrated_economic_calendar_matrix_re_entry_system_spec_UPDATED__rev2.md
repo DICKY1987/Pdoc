@@ -65,12 +65,12 @@ normalization → CAL8/CAL5.
 ### 2.y Communication Bridge Contracts (Interface-Level)
 
 **Supported Transports:**
-- **CSV (primary)** — atomic write + checksum; pull/poll semantics.
+- **CSV (primary)** — atomic write + checksum_sha256; pull/poll semantics.
 - **Socket (optional via PCL)** — push semantics with heartbeat/health.
 - **Named Pipes (optional/future)** — MAY be enabled without changing decision schema.
 
 **Decision CSV (contract reminder):**
-- Required columns: `file_seq`, `ts_utc`, `symbol`, `side`, `size`, `price` (optional), `sl`, `tp`, `ttl`, `checksum`.
+- Required columns: `file_seq`, `ts_utc`, `symbol`, `side`, `size`, `price` (optional), `sl`, `tp`, `ttl`, `checksum_sha256`.
 - Atomic write with temp‑rename; idempotency enforced by `file_seq` + hash.
 - Health: adapter mode/state transitions recorded in `health_metrics.csv`.
 
@@ -90,7 +90,7 @@ CSV is **primary transport**; **socket** is optional via the Python Communicatio
 1 Inter‑Process Contracts
 - **Transport**: CSV file drops on shared path; optional TCP/IPC later.
 - **Atomicity**: Writers output `*.tmp`, include `file_seq`, `created_at_utc`, `checksum_sha256`, then rename to final path (§2.3).
-- **Consumption Rule**: Readers process only strictly increasing `file_seq` with valid checksum.
+- **Consumption Rule**: Readers process only strictly increasing `file_seq` with valid checksum_sha256.
 
 ## 2.2 CSV Artifacts
 #### 2.2.4 `health_metrics.csv` (NEW)
@@ -114,17 +114,17 @@ Notes:
 - *Info:* socket_uptime_pct or csv_uptime_pct drops below 99.5% rolling 1h.
 
 performance_metrics` tables.
-- Atomic write: temp → checksum → rename.
+- Atomic write: temp → checksum_sha256 → rename.
 
 
-- `active_calendar_signals.csv`: `symbol, cal8, cal5, signal_type, proximity, event_time_utc, state, priority_weight, file_seq, created_at_utc, checksum`
-- `reentry_decisions.csv`: `hybrid_id, parameter_set_id, lots, sl_points, tp_points, entry_offset_points, comment, file_seq, created_at_utc, checksum`
-- `trade_results.csv`: `file_seq, ts_utc, account_id, symbol, ticket, direction, lots, entry_price, close_price, profit_ccy, pips, open_time_utc, close_time_utc, sl_price, tp_price, magic_number, close_reason, signal_source, checksum`
+- `active_calendar_signals.csv`: `symbol, cal8, cal5, signal_type, proximity, event_time_utc, state, priority_weight, file_seq, created_at_utc, checksum_sha256`
+- `reentry_decisions.csv`: `hybrid_id, parameter_set_id, lots, sl_points, tp_points, entry_offset_points, comment, file_seq, created_at_utc, checksum_sha256`
+- `trade_results.csv`: `file_seq, ts_utc, account_id, symbol, ticket, direction, lots, entry_price, close_price, profit_ccy, pips, open_time_utc, close_time_utc, sl_price, tp_price, magic_number, close_reason, signal_source, checksum_sha256`
 - `health_metrics.csv`: rolling KPIs (§14.2)
 
 ## 2.3 Atomic Write Procedure
 1) Serialize rows → temp file with `file_seq`.
-2) Compute SHA‑256 checksum field; fsync.
+2) Compute `checksum_sha256` field; fsync.
 3) Rename `*.tmp` → final; notify via file watcher (optional).
 
 ## 2.4 Time & Timezone
@@ -187,7 +187,7 @@ performance_metrics` tables.
   - `emit_decision(decision_row)`, `emit_metrics(metric_rows)`, `append_trade_result(row)`
   - `watch_signals(callback)`, `watch_health(callback)`
 - **Router:** `CommRouter` selects the active adapter with policy: Socket preferred when healthy → otherwise CSV. Policy is stateful, uses heartbeats & error counters (§2.8).
-- **Integrity Guard:** Validates `file_seq` monotonicity, SHA‑256 checksum (CSV), and JSON schema (socket) before delivery.
+- **Integrity Guard:** Validates `file_seq` monotonicity, SHA‑256 checksum_sha256 (CSV), and JSON schema (socket) before delivery.
 
 ## 2.7 Transport Adapters — Contracts
 **CSVAdapter (Production Default).**
@@ -196,7 +196,7 @@ performance_metrics` tables.
   - `trade_responses.csv` ⇄ **`trade_results.csv`**
   - `system_status.csv` ⇄ **`health_metrics.csv`**
 - **Polling/Detection:** EA detects updates on ≤5s timer (§17.1, SLA table). Writer uses atomic temp‑rename (§2.3). 
-- **Semantics:** Writer appends rows with `file_seq`, `ts_utc`, `checksum`. Reader validates then processes.
+- **Semantics:** Writer appends rows with `file_seq`, `ts_utc`, `checksum_sha256`. Reader validates then processes.
 
 **SocketAdapter (Optional / Low‑Latency).**
 - **Server:** MT4 starts DLL socket server; newline‑terminated UTF‑8 JSON messages (≤4096 bytes). Single Python client allowed.
@@ -214,7 +214,7 @@ performance_metrics` tables.
 - Python: `COMM_MODE=auto|csv|socket`, `CSV_DIR=<path>`, `SOCKET_HOST=localhost`, `SOCKET_PORT=5555`, `CHECKSUM=sha256`, `SEQ_ENFORCE=true`.
 
 ## 2.10 Troubleshooting Hooks
-- Ship `simple_socket_test.py` and CSV integrity checker. Health panel surfaces: seq gaps, checksum failures, socket status, last heartbeat (§14.3).
+- Ship `simple_socket_test.py` and CSV integrity checker. Health panel surfaces: seq gaps, checksum_sha256 failures, socket status, last heartbeat (§14.3).
 
 ---
 
@@ -786,7 +786,7 @@ Add columns if not present:
 # 9. End‑to‑End Operational Flows
 
 **Actors:** `PY` (Python services), `EA` (MT4 Execution Engine), `DB` (SQLite stores), `BR` (CSV Bridge), `FS` (Filesystem)  
-**Transports:** CSV‑only per §2.1–§2.3 (atomic write: tmp→fsync→rename, `file_seq`, `checksum`, UTC)  
+**Transports:** CSV‑only per §2.1–§2.3 (atomic write: tmp→fsync→rename, `file_seq`, `checksum_sha256`, UTC)  
 **Identifiers:** `CAL8`/`CAL5` (§3.2–§3.3), `HybridID` (§3.4)  
 **Dimensions:** Outcome (§5.3), Duration (§5.4), Proximity (§5.5), Generation (§5.6)  
 **Risk/Constraints:** PairEffect (§7.4), BrokerConstraints (§7.7), Exposure Caps (§8.1), Circuit Breakers (§6.7)  
@@ -823,7 +823,7 @@ Add columns if not present:
 - **9.104 (PY)** Merge session signals (TOKYO/LONDON/NY opens, lunch, close) with holiday/DST rules (§4.7). Assign `priority_weight` (§3.6).
 - **9.105 (PY/DB)** Commit all events with initial `state`/`proximity` and revision flags. Ensure restart hydration markers saved (§4.9).
 - **9.106 (PY)** Build **active set** for `[now−X, now+Y]` using event‑type proximity; map `PROX ∈ {IM, SH, LG, EX}` or `CD` for cooldown (§4.5).
-- **9.107 (PY/FS)** Emit `active_calendar_signals.csv` atomically (§2.2–§2.3) with `file_seq`, `checksum`, UTC timestamps (§2.4).
+- **9.107 (PY/FS)** Emit `active_calendar_signals.csv` atomically (§2.2–§2.3) with `file_seq`, `checksum_sha256`, UTC timestamps (§2.4).
 - **9.108 (PY)** Debounce duplicates by `(symbol, cal8, signal_type, state)`; suppress lower‑weight duplicates (§3.6).
 - **9.109 (PY/DB)** Store last emitted `file_seq` watermark for restart hydration (§4.9).
 - **9.110** **END** (await scheduler tick or revision event).
@@ -844,11 +844,11 @@ Add columns if not present:
 - **9.220 (PY/DB)** Resolve **ParameterSet** (tiers): exact → drop `DUR` → drop `PROX` → `SIG→ALL_INDICATORS` → Safe Default (§5.8; params in §7.3). Record `fallback_tier` and raise coverage alert if `tier>0` (§14.2).
 - **9.222 (PY)** Apply overlays: PairEffect (§7.4), drawdown/streak dampeners, session caps, **portfolio exposure caps** (§8.1).
 - **9.223 (PY)** Apply **BrokerConstraints** rounding/min‑stops/freeze levels (§7.7) to yield final `lots, sl_points, tp_points, entry_offset_points`.
-- **9.224 (PY/FS)** Emit **decision** to `reentry_decisions.csv` atomically with `file_seq`, `checksum`, UTC and `parameter_set_id@version` (§2.2–§2.3).
-- **9.230 (EA/FS)** Ingest decision per §17.1: verify monotonic `file_seq` + checksum; ignore stale/non‑matching symbols.
+- **9.224 (PY/FS)** Emit **decision** to `reentry_decisions.csv` atomically with `file_seq`, `checksum_sha256`, UTC and `parameter_set_id@version` (§2.2–§2.3).
+- **9.230 (EA/FS)** Ingest decision per §17.1: verify monotonic `file_seq` + checksum_sha256; ignore stale/non‑matching symbols.
 - **9.231 (EA)** Pre‑flight: re‑apply BrokerConstraints (§7.7) + PairEffect (§7.4); apply **circuit breakers** (§6.7) and **exposure caps** (§8.1). If blocked, log non‑execution and **GOTO 9.260**.
 - **9.232 (EA)** Execute order(s) per decision; use SafeOrder wrappers and slippage guards (§16.4.4). Respect MT4 limits (MQL4‑only).
-- **9.240 (EA/FS)** Append final execution to `trade_results.csv` (UTC, seq, checksum) with realized slippage and broker data (§17.2).
+- **9.240 (EA/FS)** Append final execution to `trade_results.csv` (UTC, seq, checksum_sha256) with realized slippage and broker data (§17.2).
 - **9.250 (PY/DB)** Persist to per‑symbol `trade_results` with **frozen** params and HybridID (§7.2, §7.3).
 - **9.260 (PY)** Update Re‑Entry Ledger; if next gen ≤ R2, loop to **9.210**; else **GOTO 9.280** (§6.5).
 - **9.280 (PY)** Mark chain **CLOSED**; emit metrics and end flow (§14.1).
@@ -860,7 +860,7 @@ Add columns if not present:
 - **9.301 (PY/DB)** Read `calendar_events` where `state ∈ {ANT_8H, ANT_1H, ACTIVE, COOLDOWN}`; rebuild active signals; recompute `PROX` from `now_utc` (§4.9).
 - **9.302 (PY/DB)** Restore **Re‑Entry Ledger** for open chains (§6.5).
 - **9.303 (PY/FS)** Read last `file_seq` for `active_calendar_signals.csv` and `reentry_decisions.csv`; set monotonic baselines (§2.3).
-- **9.304 (PY/FS)** Validate CSV integrity (seq gaps, checksum). If gaps, re‑emit latest state with next `file_seq` and raise alert (§14.2).
+- **9.304 (PY/FS)** Validate CSV integrity (seq gaps, checksum_sha256). If gaps, re‑emit latest state with next `file_seq` and raise alert (§14.2).
 - **9.305 (PY/FS)** Emit fresh `active_calendar_signals.csv` (atomic) and start timers/jobs (§4.9).
 
 ---
@@ -876,7 +876,7 @@ Add columns if not present:
 ## 9.500 — Health, Metrics & Coverage
 
 - **9.501 (PY/DB)** Update `metrics` table and `health_metrics.csv` with coverage %, fallback rate, decision latency p95/p99, slippage delta, spread vs model, conflict rate, calendar revisions processed, circuit‑breaker triggers (§14.1, §14.3).
-- **9.502 (PY)** Raise alerts on thresholds: excessive fallbacks, checksum failure, broker drift, heartbeat timeout, proximity rebuild failure (§14.2).
+- **9.502 (PY)** Raise alerts on thresholds: excessive fallbacks, checksum_sha256 failure, broker drift, heartbeat timeout, proximity rebuild failure (§14.2).
 
 ---
 
@@ -997,13 +997,13 @@ Benchmarks are enforced via `performance_metrics` and alert thresholds defined i
 - Mapping coverage %, fallback rate, decision latency, slippage vs expected, spread vs model, conflict rate, calendar revisions processed, circuit‑breaker triggers.
 
 ## 14.2 Alerts
-- Coverage violation, checksum failure, broker drift > threshold, excessive fallbacks, proximity/state rebuild failures.
+- Coverage violation, checksum_sha256 failure, broker drift > threshold, excessive fallbacks, proximity/state rebuild failures.
 
 ## 14.3 Metrics Panel (UI Contract)
 - **Purpose:** Single screen for live operational health.
 - **Data Source:** `metrics` table and `health_metrics.csv`.
 - **Refresh Cadence:** 1s (configurable), rolling 15m/1h aggregates.
-- **Core Tiles:** Mapping coverage %, fallback rate (tier>0), decision latency p95/p99, slippage delta (actual−expected), spread vs model, signal conflict rate, calendar revisions processed, circuit‑breaker triggers, CSV integrity (seq gaps / checksum failures).
+- **Core Tiles:** Mapping coverage %, fallback rate (tier>0), decision latency p95/p99, slippage delta (actual−expected), spread vs model, signal conflict rate, calendar revisions processed, circuit‑breaker triggers, CSV integrity (seq gaps / checksum_sha256 failures).
 - **Drill‑downs:** Per‑symbol hybrid‑ID hit distribution; top unmapped combos; per‑family performance.
 - **Alarms:** Visual badges linked to §14.2 thresholds.
 
@@ -1086,7 +1086,7 @@ Benchmarks are enforced via `performance_metrics` and alert thresholds defined i
   - `active_calendar_signals.csv` (optional display/telemetry only; no autonomous trading in listener mode)
   - `BrokerConstraints` repo snapshot (§7.7) and `PairEffect` (§7.4)
 - **Outputs:**
-  - `trade_results.csv` (atomic append with `file_seq`, `ts_utc`, checksum)
+  - `trade_results.csv` (atomic append with `file_seq`, `ts_utc`, checksum_sha256)
   - Signal/DLL response logs (if DLL mode enabled)
 
 ### 16.4.2 Modes (recommended)
@@ -1095,7 +1095,7 @@ Benchmarks are enforced via `performance_metrics` and alert thresholds defined i
 - **Autonomous (lab only):** `AutonomousMode=true` (internal calendar/time filters may execute; **not** for production per §4/§5 governance).
 
 ### 16.4.3 Contracts & Behaviors
-- **Decision ingestion:** Poll `reentry_decisions.csv` by `file_seq`; verify checksum; ignore stale/out‑of‑order rows; execute only matching `Symbol()`.
+- **Decision ingestion:** Poll `reentry_decisions.csv` by `file_seq`; verify checksum_sha256; ignore stale/out‑of‑order rows; execute only matching `Symbol()`.
 - **Pre‑flight overlay:** Before `OrderSend`, apply `BrokerConstraints` (lot rounding, min stops, freeze level) and `PairEffect` (spread buffers, cooldown) (§6.4, §7.4, §7.7).
 - **Circuit breakers & exposure:** Enforce portfolio caps (§8.1) and global breakers (§6.7) locally; refuse orders when tripped.
 - **Results emission:** On close (or partial), emit `trade_results.csv` with UTC fields and exact params used (frozen snapshot ID@version, §7.3).
@@ -1106,14 +1106,14 @@ Benchmarks are enforced via `performance_metrics` and alert thresholds defined i
 - **Health beacons:** Periodic status lines in `health_metrics.csv` (latency, last seq processed, slippage deltas).
 
 ### 16.4.5 Constraints
-- No inference: if decision row invalid or checksum fails → skip and log (§17.3).
+- No inference: if decision row invalid or checksum_sha256 fails → skip and log (§17.3).
 - Execution conforms to MT4/MQL4 only; no MQL5 APIs.
 
 ### 16.4.6 KPIs
-- Decision‑to‑send latency (p95), checksum failure rate, slippage vs expected, rejected orders by constraint type, circuit‑breaker activation count.
+- Decision‑to‑send latency (p95), checksum_sha256 failure rate, slippage vs expected, rejected orders by constraint type, circuit‑breaker activation count.
 
 ### 16.4.7 Required Changes vs Current EA Implementation
-- **Add** atomic CSV write/read: `file_seq`, SHA‑256 `checksum`, temp‑file rename.
+- **Add** atomic CSV write/read: `file_seq`, SHA‑256 `checksum_sha256`, temp‑file rename.
 - **Switch** timestamps to **UTC** on all emissions; include `account_id`.
 - **Implement** `reentry_decisions.csv` ingestion path; bind to `Symbol()` and de‑duplicate by `file_seq`.
 - **Load & apply** `BrokerConstraints` (§7.7) and `PairEffect` (§7.4) before `OrderSend`.
@@ -1142,11 +1142,11 @@ Benchmarks are enforced via `performance_metrics` and alert thresholds defined i
 - `DebugComm` (bool): verbose comm logs to Experts tab.
 
 ## 17.1 Read Contracts
-- **Decisions:** Read `reentry_decisions.csv` (validate `file_seq` monotonicity & `checksum`). Execute only rows where `symbol == Symbol()`; ignore stale `file_seq`.
+- **Decisions:** Read `reentry_decisions.csv` (validate `file_seq` monotonicity & `checksum_sha256`). Execute only rows where `symbol == Symbol()`; ignore stale `file_seq`.
 - **Signals (optional):** Read `active_calendar_signals.csv` for on‑chart display/telemetry; **never** as a trading source in production.
 
 ## 17.2 Write Contracts
-- **Trade results:** Append to `trade_results.csv` using atomic write/rename with `file_seq`, `ts_utc`, and `checksum`. Include all listed fields (§2.2) plus any broker‑side fills/slippage.
+- **Trade results:** Append to `trade_results.csv` using atomic write/rename with `file_seq`, `ts_utc`, and `checksum_sha256`. Include all listed fields (§2.2) plus any broker‑side fills/slippage.
 - **Health metrics:** Periodically append to `health_metrics.csv` (decision latency, slippage delta, last processed `file_seq`).
 
 ## 17.3 Execution Behavior (MQL4)
@@ -1155,7 +1155,7 @@ Benchmarks are enforced via `performance_metrics` and alert thresholds defined i
 - Enforce exposure caps (§8.1) and circuit breakers (§6.7); if blocked, log a non‑execution response.
 
 ## 17.4 Error Handling
-- If decision row invalid or checksum fails → log & skip; do not infer substitutes.
+- If decision row invalid or checksum_sha256 fails → log & skip; do not infer substitutes.
 - Propagate structured error/taxonomy in logs and responses; include `last_error`, `context`, `ticket` if applicable.
 
 # 18. Migration & Rollout Plan
