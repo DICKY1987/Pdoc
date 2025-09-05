@@ -4,7 +4,9 @@ import re, sys
 
 ID_RE = re.compile(r"^<!-- BEGIN:(ECON\.\d{3}\.\d{3}\.\d{3}\.(DEF|REQ|TABLE|FLOW|ALERT|ARCH|CTRL|EXAMPLE|ACCEPTANCE)\.[a-z0-9_]+) -->$")
 END_RE = re.compile(r"^<!-- END:(ECON\.\d{3}\.\d{3}\.\d{3}\.(DEF|REQ|TABLE|FLOW|ALERT|ARCH|CTRL|EXAMPLE|ACCEPTANCE)\.[a-z0-9_]+) -->$")
-REF_RE = re.compile(r"@ECON\.\d+\.\d+")
+REF_RE = re.compile(
+    r"@ECON\.\d{3}\.\d{3}(?:\.\d{3}\.(?:DEF|REQ|TABLE|FLOW|ALERT|ARCH|CTRL|EXAMPLE|ACCEPTANCE)\.[a-z0-9_]+)?"
+)
 
 def main():
     if len(sys.argv) < 2:
@@ -41,13 +43,26 @@ def main():
 
     text = "\n".join(lines)
 
-    # Cross-ref sanity: section prefix resolution
+    # Cross-ref sanity: section prefix resolution and full block matching
     for ref in REF_RE.findall(text):
         try:
-            _, major, minor = ref.split(".")
-            prefix = f"ECON.{int(major):03d}.{int(minor):03d}."
-            if not any(x.startswith(prefix) for x in ids):
-                errors.append(f"Cross-ref {ref} has no matching section prefix among block IDs")
+            parts = ref.split(".")
+            if len(parts) == 6:
+                _, major, minor, block, btype, name = parts
+                full_id = (
+                    f"ECON.{int(major):03d}.{int(minor):03d}.{int(block):03d}.{btype}.{name}"
+                )
+                if full_id not in ids:
+                    errors.append(f"Cross-ref {ref} has no matching block ID")
+            elif len(parts) == 3:
+                _, major, minor = parts
+                prefix = f"ECON.{int(major):03d}.{int(minor):03d}."
+                if not any(x.startswith(prefix) for x in ids):
+                    errors.append(
+                        f"Cross-ref {ref} has no matching section prefix among block IDs"
+                    )
+            else:
+                errors.append(f"Malformed cross-ref: {ref}")
         except Exception:
             errors.append(f"Malformed cross-ref: {ref}")
 
