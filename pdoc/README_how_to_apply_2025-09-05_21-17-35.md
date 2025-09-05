@@ -12,7 +12,7 @@
 
 3) **Run the linter**:
    ```bash
-   python econ_doc_lint_2025-09-05_21-17-35.py /path/to/your/spec.md
+   python econ_doc_lint.py /path/to/your/spec.md
    ```
    - It checks BEGIN/END pairing, cross-ref prefixes, and required CSV meta fields.
 
