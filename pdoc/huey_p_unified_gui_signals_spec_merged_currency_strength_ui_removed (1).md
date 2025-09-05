@@ -368,8 +368,8 @@ alert_severity:
 **Purpose:** Provide a unified, filterable stream/table of normalized signals.
 
 ### 9.1 Columns
-- Time, symbol, kind, direction, strength, confidence, p, n, horizon, tags, source
-- **Identifiers (visible):** `hybrid_id`, `cal8`, `cal5`, and Hybrid components: `GEN`, `SIG`, `DUR`, `OUT`, `PROX`, `SYMBOL`
+- Time, symbol, kind, direction, strength, confidence, p, n, horizon, tags, source, backend_id
+- **Identifiers (visible):** `backend_id`, `hybrid_id`, `cal8`, `cal5`, and Hybrid components: `GEN`, `SIG`, `DUR`, `OUT`, `PROX`, `SYMBOL`
 - **Provenance (detail drawer):** `file_seq`, `checksum_sha256`, adapter mode (CSV/socket), last revision id
 - **Probability fields:** `p` (0-1), `n` (sample size), `confidence` (LOW/MED/HIGH/VERY_HIGH)
 
@@ -384,6 +384,7 @@ alert_severity:
 - Infinite scroll/pagination without UI jank; stable column widths.
 - Filters persist per user/session; exports respect filters and include visible identifier fields.
 - Every row resolves to a source (trace id) for auditability, including `file_seq`/`checksum_sha256` when present.
+- Backend integration: `backend_id` from backend service present for all rows; mismatches trigger error tile.
 
 ### 9.4 Controls & actions (buttons)
 - **Save filter preset** — stores current filters under a name (tid:`signals_filter_save`).
