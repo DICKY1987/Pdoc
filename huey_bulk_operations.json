@@ -1,0 +1,10 @@
+{
+  "description": "Bulk operations for HUEY_P spec",
+  "operations": [
+    {
+      "type": "add_missing_deps",
+      "pattern": "CTRL.*controls",
+      "add_dep": "HUEY.020.001.001"
+    }
+  ]
+}
