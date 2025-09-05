@@ -1,20 +1,24 @@
 #!/usr/bin/env python3
 """Lint economic specification Markdown documents.
 
-The script validates block ``BEGIN``/``END`` markers, cross-references and
-required metadata fields inside one or more Markdown files.
+Validate ``BEGIN``/``END`` markers, cross references, and required metadata
+fields inside one or more Markdown files.
 
-Arguments:
+Args:
     FILE [FILE ...]: Markdown files to lint.
-    --strict: enable additional checks such as detecting duplicate block ids.
+    -s, --strict: Enable additional checks such as detecting duplicate block
+        IDs.
 
 Exit codes:
-    0 if all files pass linting.
-    1 if any lint errors are found or a file cannot be read.
-    2 if the command line is invalid.
+    0: All files pass linting.
+    1: Lint errors were found or a file could not be read.
+    2: Invalid command line usage.
 """
 
+from __future__ import annotations
+
 import argparse
+from pathlib import Path
 import re
 import sys
 
@@ -102,33 +106,34 @@ def main(argv: list[str] | None = None) -> int:
         help="Markdown files to lint",
     )
     parser.add_argument(
+        "-s",
         "--strict",
         action="store_true",
         help="Enable additional strict checks",
     )
     args = parser.parse_args(argv)
 
-    had_error = False
+    failed = False
     for path in args.files:
+        p = Path(path)
         try:
-            with open(path, "r", encoding="utf-8") as f:
-                text = f.read()
+            text = p.read_text(encoding="utf-8")
         except OSError as exc:
-            print(f"{path}: {exc}", file=sys.stderr)
-            had_error = True
+            print(f"{p}: {exc}", file=sys.stderr)
+            failed = True
             continue
 
         errors = lint_text(text, strict=args.strict)
         if errors:
-            had_error = True
-            print(f"{path}:")
+            failed = True
+            print(f"{p}:")
             print("\n".join(errors))
         else:
-            print(f"{path}: OK")
+            print(f"{p}: OK")
 
-    return 1 if had_error else 0
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())
 
