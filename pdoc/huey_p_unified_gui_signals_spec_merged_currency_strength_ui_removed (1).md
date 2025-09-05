@@ -183,7 +183,7 @@ This document unifies the GUI modernization plan into one cohesive specification
   2) **Config (Settings)** — global and per-indicator/strategy parameters
   3) **Signals** — normalized signal stream with probability fields
   4) **Templates** — save/load layouts & parameter bundles
-  5) **Trade History** — executed orders, P/L metrics, filters & KPIs
+  5) **Trade History** — executed orders with `hybrid_id`, `cal8`, `cal5`, `parameter_set_id` linkage, P/L metrics, filters & KPIs
   6) **History/Analytics** — logs, KPIs, exports (signals/alerts/config)
   7) **DDE Price Feed** — data feed controls, subscriptions, live table
   8) **Economic Calendar** — event ingestion, filters, exports
@@ -240,6 +240,28 @@ A single envelope for all signal-producing components, enabling consistent routi
 ### 5.3 Contract guarantees
 - Versioned schema; missing optional fields → null; strict types; units included for quantitative values; trace id for data lineage.
 
+## 5.1 Standardized Enums (Single Source of Truth)
+
+```yaml
+signal_direction:
+  canonical: [LONG, SHORT, NEUTRAL]
+
+confidence:
+  canonical: [LOW, MED, HIGH, VERY_HIGH]
+  
+proximity:
+  canonical: [IM, SH, LG, EX, CD]
+  descriptions:
+    IM: "Immediate (0-5m)"
+    SH: "Short (5-30m)" 
+    LG: "Long (30m-2h)"
+    EX: "Extended (2h+)"
+    CD: "Cooldown (post-event)"
+
+alert_severity:
+  canonical: [INFO, WARN, ERROR]
+```
+
 ---
 
 ## 6) Conditional Probability Engine (Concept)
@@ -270,10 +292,14 @@ A single envelope for all signal-producing components, enabling consistent routi
 
 ---
 
+<!-- BEGIN:HUEY.007.001.001.REQ.live_tab_overview -->
 ## 7) Live Tab
 **Purpose:** Give operators a real-time, at-a-glance view and quick actions.
 
 ### 7.1 Key panels
+<!-- DEPS: HUEY.002.001 -->
+<!-- AFFECTS: HUEY.007.003 -->
+<!-- END:HUEY.007.001.001.REQ.live_tab_overview -->
 - Status cards: connectivity, latency, data-health, risk posture, open positions summary.
 - Signal ticker: latest normalized signals with direction/strength/confidence (`p`, `n` when available).
 - Quick actions: acknowledge alerts, pin signals, jump to related Config/History.
@@ -301,7 +327,17 @@ A single envelope for all signal-producing components, enabling consistent routi
 
 ### 8.1 Global settings
 - Data sources, update intervals, alert thresholds, theme, hotkeys.
-- **Communications (bridge):** `COMM_MODE` (Auto / CSV / Socket), `ListenPort`, `CommPollSeconds`, `EnableCSVSignals`, `EnableDLLSignals`, `DebugComm` (default: off). Document safe defaults and validation (e.g., port range).
+
+### 8.1.1 Communications Bridge Settings
+- **COMM_MODE:** Auto / CSV / Socket (default: Auto)
+- **ListenPort:** Socket port (default: 5555, range: 1024-65535)
+- **CommPollSeconds:** CSV polling interval (default: 5s, min: 1s)
+- **EnableCSVSignals:** Enable CSV file transport (default: true)
+- **EnableDLLSignals:** Enable socket/DLL transport (default: false)
+- **DebugComm:** Verbose communication logging (default: false)
+- **CSV_DIR:** Directory path for CSV artifacts
+- **CHECKSUM:** Validation method (fixed: sha256)
+- **SEQ_ENFORCE:** Enforce monotonic file_seq (default: true)
 
 
 ### 8.2 Per‑indicator/strategy forms
@@ -321,7 +357,7 @@ A single envelope for all signal-producing components, enabling consistent routi
 - **Validate now** — run full validation without saving; surfaces toasts (tid:`config_validate_now`).
 - **Load defaults** — restore registered defaults for the current plugin (tid:`config_load_defaults`).
 - **Import JSON** — load parameter JSON; schema check + diff preview (tid:`config_import_json`).
-- **Export JSON** — export current parameters with checksum (tid:`config_export_json`).
+- **Export JSON** — export current parameters with checksum_sha256 (tid:`config_export_json`).
 - **Copy deep‑link** — copies URL to this form/section for sharing (tid:`config_copy_link`).
 - **Reconnect Socket** — drop & re-establish socket (guard: COMM_MODE=Socket) (tid:`config_comm_reconnect`).
 - **Test Bridge** — send ping through current COMM_MODE and show round-trip & error count (tid:`config_comm_test`).
@@ -332,9 +368,10 @@ A single envelope for all signal-producing components, enabling consistent routi
 **Purpose:** Provide a unified, filterable stream/table of normalized signals.
 
 ### 9.1 Columns
-- Time, symbol, kind, direction, strength, confidence, `p`, `n`, horizon, tags, source.
-- **Identifiers (visible):** `hybrid_id`, `cal8`, `cal5`, and the Hybrid ID components: `GEN`, `SIG`, `DUR`, `OUT`, `PROX`, `SYMBOL`.
-- **Provenance (detail drawer):** `file_seq`, `checksum` (for calendar/matrix-derived rows), adapter mode (CSV/socket), and last revision id.
+- Time, symbol, kind, direction, strength, confidence, p, n, horizon, tags, source
+- **Identifiers (visible):** `hybrid_id`, `cal8`, `cal5`, and Hybrid components: `GEN`, `SIG`, `DUR`, `OUT`, `PROX`, `SYMBOL`
+- **Provenance (detail drawer):** `file_seq`, `checksum_sha256`, adapter mode (CSV/socket), last revision id
+- **Probability fields:** `p` (0-1), `n` (sample size), `confidence` (LOW/MED/HIGH/VERY_HIGH)
 
 ### 9.2 Interactions
 - Multi-filter (symbol, timeframe, kind, confidence tier, `p`/`n` ranges, tags).
@@ -346,7 +383,7 @@ A single envelope for all signal-producing components, enabling consistent routi
 ### 9.3 Acceptance criteria
 - Infinite scroll/pagination without UI jank; stable column widths.
 - Filters persist per user/session; exports respect filters and include visible identifier fields.
-- Every row resolves to a source (trace id) for auditability, including `file_seq`/`checksum` when present.
+- Every row resolves to a source (trace id) for auditability, including `file_seq`/`checksum_sha256` when present.
 
 ### 9.4 Controls & actions (buttons)
 - **Save filter preset** — stores current filters under a name (tid:`signals_filter_save`).
@@ -409,7 +446,7 @@ A single envelope for all signal-producing components, enabling consistent routi
 
 ### 12.1 Logs
 - Signal emissions, alert lifecycle, config/template changes.
-- **Data integrity:** log calendar/matrix file ingestion with `file_seq`/`checksum`, promotion/demotion reasons, and detected sequence gaps.
+- **Data integrity:** log calendar/matrix file ingestion with `file_seq`/`checksum_sha256`, promotion/demotion reasons, and detected sequence gaps.
 
 ### 12.2 KPIs
 - Hit rate by source/kind, average target time, confidence distribution, false-positive analysis.
@@ -479,15 +516,15 @@ A single envelope for all signal-producing components, enabling consistent routi
 
 ### 14.1 Features
 - Import (CSV/API when available); filters by date range, currency, impact, category; search.
-- **Active Calendar Signals table (CSV-aligned):** columns exactly → `symbol`, `cal8`, `cal5`, `signal_type`, `proximity`, `event_time_utc`, `state`, `priority_weight`, `file_seq`, `created_at_utc`, `checksum`.
+- **Active Calendar Signals table (CSV-aligned):** columns exactly → `symbol`, `cal8`, `cal5`, `signal_type`, `proximity`, `event_time_utc`, `state`, `priority_weight`, `file_seq`, `created_at_utc`, `checksum_sha256`.
 - **State chips:** `SCHEDULED`, `ANTICIPATION`, `ACTIVE`, `COOLDOWN`, `EXPIRED` (filterable).
 - **Proximity badges:** `IM`, `SH`, `LG`, `EX`, `CD` with a live **countdown to event_time_utc** per row.
 - **Revisions & priority:** surface current revision id and apply priority weighting in sort; show last promotion/demotion reason.
-- **Communication & Health panel:** adapter mode (CSV/socket), heartbeat, sequence/checksum status; quick actions **Run Socket Test** and **Run CSV Integrity Check**.
-- **Alerts:** checksum mismatch or sequence-gap triggers a WARN/ERROR toast and a log entry in §12.
+- **Communication & Health panel:** adapter mode (CSV/socket), heartbeat, sequence/checksum_sha256 status; quick actions **Run Socket Test** and **Run CSV Integrity Check**.
+- **Alerts:** checksum_sha256 mismatch or sequence-gap triggers a WARN/ERROR toast and a log entry in §12.
 - Event detail drawer; export selected to CSV/JSON; optional auto-refresh schedule.
 - **Emergency controls:** operator can **STOP Imports** (pause scheduler; newly ingested/current/future rows marked `BLOCKED`) and **RESUME Imports** (unblock and restart schedule). Emergency state is visible in header.
-- **Integrity tiles:** show **sequence-gap** and **checksum-failure** cumulative counts sourced from metrics; link to System Status drill‑down.
+- **Integrity tiles:** show **sequence-gap** and **checksum_sha256-failure** cumulative counts sourced from metrics; link to System Status drill‑down.
 
 
 ### 14.2 Acceptance criteria
@@ -497,15 +534,15 @@ A single envelope for all signal-producing components, enabling consistent routi
 
 ### 14.3 Controls & actions (buttons)
 - **Import CSV** — ingest events; shows validation summary (tid:`cal_import_csv`).
-- **Socket test** — end‑to‑end adapter check (tid:`cal_socket_test`).
-- **CSV integrity check** — sequence + checksum audit (tid:`cal_integrity_check`).
+- **Socket Test** — end-to-end adapter connectivity test (tid:`cal_socket_test`).
+- **CSV Integrity Check** — validate file_seq and checksums (tid:`cal_integrity_check`).
 - **Refresh/Rescan** — reload active set & revisions (tid:`cal_refresh`).
 - **Export selection** — CSV/JSON with visible columns (tid:`cal_export`).
 - **Toggle live mode** — auto‑refresh on/off (tid:`cal_live_toggle`).
-- **STOP Imports** — enter emergency stop; pause jobs and mark `BLOCKED` (admin‑gated) (tid:`cal_stop_imports`).
-- **RESUME Imports** — clear emergency; resume schedule (tid:`cal_resume_imports`).
+- **STOP Imports** — enter emergency stop; pause scheduler and mark events `BLOCKED` (admin‑gated) (tid:`cal_stop_imports`).
+- **RESUME Imports** — clear emergency state; restart scheduler (tid:`cal_resume_imports`).
 - Emergency **STOP** takes effect within one poll interval; UI badges/tiles flip to *Stopped*; **RESUME** restarts within one interval.
-- Integrity tiles reflect running counts for **seq gaps** and **checksum failures** and link to logs.
+- Integrity tiles reflect running counts for **seq gaps** and **checksum_sha256 failures** and link to logs.
 
 ---
 
@@ -515,8 +552,30 @@ A single envelope for all signal-producing components, enabling consistent routi
 ### 15.1 Contents (health, incidents, resources)
 - Service health (OK/Degraded/Down), recent incidents, queue depths, CPU/memory footprints, disk/network alerts.
 - **Operational metrics tiles:** mapping coverage %, fallback rate, decision latency p95/p99, slippage vs expected, spread vs model, signal conflict rate, calendar revisions processed, circuit‑breaker triggers.
-- **Broker Clock Skew badge** with offset; when |skew| > **120s** or offset stale > **15m**, system enters **DEGRADED** (EA bridge set disconnected), decision emission disabled until **two consecutive** healthy checks.
 - **Health metrics tiles:** `database_connected`, `ea_bridge_connected`, `last_heartbeat`, `cpu_usage`, `memory_usage`, `win_rate`, `max_drawdown`, plus existing coverage/latency/fallback/conflict/transport uptime and **CSV integrity** (seq gaps/checksums).
+
+### 15.1.1 Health Metrics Schema
+| Field | Type | Unit | Constraints | Description |
+|-------|------|------|-------------|-------------|
+| ts_utc | TIMESTAMP | ISO-8601 UTC | NOT NULL | Metric timestamp |
+| ea_bridge_connected | BOOLEAN | | NOT NULL | EA bridge connectivity |
+| csv_uptime_pct | REAL | % (0-100) | 0 ≤ v ≤ 100 | CSV writer uptime |
+| socket_uptime_pct | REAL | % (0-100) | 0 ≤ v ≤ 100 | Socket uptime |
+| p99_latency_ms | INTEGER | ms | v ≥ 0 | End-to-end latency p99 |
+| fallback_rate | REAL | % (0-100) | 0 ≤ v ≤ 100 | Fallback mode usage |
+| conflict_rate | REAL | % (0-100) | 0 ≤ v ≤ 100 | File conflicts per hour |
+| file_seq | INTEGER | | NOT NULL, monotonic | Sequence counter |
+| checksum_sha256 | TEXT | hex | NOT NULL, len=64 | Row checksum |
+
+### 15.1.2 Broker Clock Skew Monitoring
+- **Skew Badge:** Shows broker time offset vs UTC system time
+- **DEGRADED Mode Triggers:** |skew| > 120s OR offset age > 15 minutes
+- **DEGRADED Behavior:** 
+  - Set `ea_bridge_connected=0` in health metrics
+  - Disable new decision emission
+  - Show degraded state in UI with reason
+  - Require two consecutive healthy checks for recovery
+- **Recovery Actions:** Manual "Resync Broker Clock" button available
 
 ### 15.2 Operator tools
 - Restart a non-critical service, clear cache (with confirmation), download diagnostics bundle.
@@ -529,7 +588,7 @@ A single envelope for all signal-producing components, enabling consistent routi
 
 ### 15.3 Acceptance criteria
 - Health states reconcile with EventBus telemetry; actions emit auditable events.
-- **Alerts** fire on coverage/latency threshold breaches and checksum/sequence failures; tiles show last updated timestamps.
+- **Alerts** fire on coverage/latency threshold breaches and checksum_sha256/sequence failures; tiles show last updated timestamps.
 - Diagnostics bundle includes timestamps, versions, and redacts secrets.
 
 ### 15.4 Controls & actions (buttons)
@@ -598,8 +657,15 @@ A single envelope for all signal-producing components, enabling consistent routi
 - **Open decisions** — list executions for the cell (tid:`mx_open_decisions`).
 - **Open re‑entry ledger** — jump to latest chain (tid:`mx_open_ledger`).
 - **Export** — CSV/JSON for current slice (tid:`mx_export`).
-- **New Override…** — open dialog (scope, TTL, reason) (tid:`mx_new_override`).
-- **Revert Override** — immediately remove selected override (tid:`mx_revert_override`).
+- **New Override...** — create manual override with scope, TTL, and reason (tid:`mx_new_override`).
+- **Revert Override** — immediately remove selected override (tid:`mx_revert_override`)
+- **View Active Overrides** — show all overrides with remaining TTL (tid:`mx_view_overrides`).
+
+### 16.10 Manual Overrides
+- **Purpose:** Temporary parameter adjustments for specific conditions
+- **Fields:** scope (symbol/strategy/cell), TTL (duration), reason (free text)
+- **Behavior:** Auto-revert on TTL expiry; tag resulting trades for audit
+- **Governance:** Require approval for TTL > 24h; log all override actions
 
 ---
 
@@ -658,7 +724,7 @@ A single envelope for all signal-producing components, enabling consistent routi
 
 ### 18.1 Triggering
 - Probability/confidence thresholds; sample-size floors; risk posture gates; duplicated-signal suppression within TTL.
-- **Ops triggers:** mapping coverage below threshold; fallback usage spike; checksum mismatch or sequence-gap detected by calendar intake.
+- **Ops triggers:** mapping coverage below threshold; fallback usage spike; checksum_sha256 mismatch or sequence-gap detected by calendar intake.
 - **Degraded mode** (broker clock skew/stale offset) and **Emergency STOP** engaged raise WARN/ERROR alerts with remediation links.
 
 
@@ -698,6 +764,10 @@ A single envelope for all signal-producing components, enabling consistent routi
 - **Risk:** `risk.posture_update`, `risk.guard_flag`
 - **UI:** `ui.toast`, `ui.template_loaded`, `ui.panel_added`, `ui.panel_updated`
 - **Config:** `config.changed`, `config.validation_error`
+- **Backend Integration:** `bridge.connect`, `bridge.disconnect`, `bridge.failover`
+- **Calendar Events:** `calendar.import`, `calendar.revision`, `calendar.emergency_stop`
+- **Matrix Operations:** `matrix.cell_update`, `matrix.override_create`, `matrix.version_save`
+- **Health Monitoring:** `health.degraded`, `health.recovered`, `health.alert_threshold`
 
 ### 20.2 State keys
 State keys (top-level): `app`, `user_prefs`, `risk`, `data_feeds`, `indicators`, `signals`, `alerts`, `templates`, `layout`.
@@ -724,6 +794,14 @@ State keys (top-level): `app`, `user_prefs`, `risk`, `data_feeds`, `indicators`,
 
 ### 21.6 Acceptance criteria
 - Stable FPS under load; deterministic param updates; no uncaught validation errors; alert dedupe verified; schema versioning documented.
+
+### 21.7 Backend Integration Tests
+- **CSV Transport:** Atomic write validation, checksum_sha256 verification, file_seq monotonicity
+- **Socket Failover:** Connection drop recovery, adapter switching latency < 2s
+- **Time Synchronization:** Broker skew detection, degraded mode transitions
+- **Emergency Controls:** STOP/RESUME operations complete within one poll interval
+- **Manual Overrides:** TTL enforcement, auto-revert functionality, audit trail
+- **Health Monitoring:** Metric updates ≤ 1s, alert threshold validation
 
 ---
 
