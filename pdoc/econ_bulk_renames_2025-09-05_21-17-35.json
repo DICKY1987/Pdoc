@@ -1,0 +1,18 @@
+{
+  "description": "Bulk renames and cross-ref fixes to apply before/after merging patch blocks.",
+  "edits": [
+    {
+      "kind": "crossref-fix",
+      "note": "PairEffect glossary cross-ref",
+      "search": "@ECON.007.004",
+      "replace": "@ECON.007.003"
+    },
+    {
+      "kind": "field-rename",
+      "note": "Standardize checksum field name across CSV schemas and examples",
+      "search_regex": "\\\\bchecksum\\\\b",
+      "replace": "checksum_sha256",
+      "scope_hint": "Within TABLE.*csv_artifacts and CSV examples"
+    }
+  ]
+}
