@@ -1,0 +1,32 @@
+{
+  "identifier_systems": {
+    "cal8_format": {
+      "huey_p_section": "§3.2",
+      "backend_section": "§3.2",
+      "description": "8-symbol calendar identifier format",
+      "shared_definition": "schemas/cal8_identifier.md"
+    },
+    "hybrid_id": {
+      "huey_p_section": "§3.4",
+      "backend_section": "§3.4",
+      "description": "Primary composite key format",
+      "shared_definition": "schemas/hybrid_id.md"
+    }
+  },
+  "signal_processing": {
+    "normalized_signal_model": {
+      "huey_p_section": "§5",
+      "backend_section": "§5",
+      "description": "Core signal fields and contracts",
+      "shared_definition": "schemas/signal_model.md"
+    }
+  },
+  "communication": {
+    "csv_contracts": {
+      "huey_p_section": "§13.4",
+      "backend_section": "§2.2",
+      "description": "File-based data exchange format",
+      "shared_definition": "contracts/csv_interface.md"
+    }
+  }
+}
