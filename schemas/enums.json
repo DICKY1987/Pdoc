@@ -1,0 +1,48 @@
+{
+  "signal_types": [
+    {
+      "name": "ECO_HIGH_USD",
+      "description": "High-impact USD economic event",
+      "category": "calendar"
+    },
+    {
+      "name": "ANTICIPATION_1HR_EUR",
+      "description": "1-hour anticipation signal for EUR events",
+      "category": "anticipation"
+    },
+    {
+      "name": "VOLATILITY_SPIKE",
+      "description": "Market volatility spike detection",
+      "category": "technical"
+    }
+  ],
+  "proximity_buckets": [
+    {
+      "name": "IM",
+      "description": "Immediate (0-20 minutes)",
+      "min_minutes": 0,
+      "max_minutes": 20
+    },
+    {
+      "name": "SH",
+      "description": "Short (21-90 minutes)",
+      "min_minutes": 21,
+      "max_minutes": 90
+    }
+  ],
+  "outcome_buckets": [
+    {
+      "name": "O1",
+      "description": "Full SL or worse",
+      "rr_min": null,
+      "rr_max": -1.0
+    },
+    {
+      "name": "O2",
+      "description": "Partial loss",
+      "rr_min": -1.0,
+      "rr_max": -0.25
+    }
+  ]
+}
+
