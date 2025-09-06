@@ -4,7 +4,7 @@
 
 ### 1.1 Cross-Reference Matrix Implementation
 
-**Master Cross-Reference Table (cross_refs.yml)**
+**Master Cross-Reference Table (config/cross_refs.yml)**
 ```yaml
 identifier_systems:
   cal8_format:
@@ -687,7 +687,7 @@ document_mapping:
   frontend: "huey_p_unified_gui_signals_spec.md"
   backend: "integrated_economic_calendar_matrix_re_entry_system_spec.md"
 
-cross_references: "cross_refs.yml"
+cross_references: "config/cross_refs.yml"
 schema_directory: "schemas/"
 
 terminology:

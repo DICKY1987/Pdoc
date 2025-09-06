@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate document cross-references defined in cross_refs.yml."""
+"""Validate document cross-references defined in config/cross_refs.yml."""
 from __future__ import annotations
 
 import argparse
@@ -36,8 +36,8 @@ class CrossReferenceValidator:
 
     def section_exists(self, doc_type: str, section: str) -> bool:
         doc_map = {
-            "huey_p_section": "huey_p_unified_gui_signals_spec.md",
-            "backend_section": "integrated_economic_calendar_matrix_re_entry_system_spec.md",
+            "huey_p_section": "docs/huey_p_unified_gui_signals_spec.md",
+            "backend_section": "docs/integrated_economic_calendar_matrix_re_entry_system_spec.md",
         }
         doc_file = self.doc_dir / doc_map[doc_type]
         if not doc_file.exists():
@@ -51,7 +51,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Validate document cross-references")
     parser.add_argument(
         "--cross-ref",
-        default="cross_refs.yml",
+        default="config/cross_refs.yml",
         help="Path to cross reference YAML file",
     )
     parser.add_argument(
