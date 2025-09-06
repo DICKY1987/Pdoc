@@ -1,6 +1,6 @@
 """Validate change requests for required metadata.
 
-This script ensures that all change requests in ``change_requests.json``
+This script ensures that all change requests in ``config/change_requests.json``
 contain the fields needed for automation. Requests that are not yet resolved
 must include an ``impact`` description and a tracking ``branch``. Requests in
 ``in_review`` state must also list ``reviewers``.
@@ -16,7 +16,7 @@ from typing import Any, Dict, List
 
 import json
 
-DEFAULT_DB = Path(__file__).resolve().parents[1] / "change_requests.json"
+DEFAULT_DB = Path(__file__).resolve().parents[1] / "config" / "change_requests.json"
 
 
 def load_requests(db_path: Path = DEFAULT_DB) -> List[Dict[str, Any]]:

@@ -6,7 +6,7 @@ import textwrap
 import pytest
 
 # Load the lint module from its file path
-LINT_PATH = Path(__file__).resolve().parents[1] / "pdoc" / "econ_doc_lint_2025-09-05_21-17-35.py"
+LINT_PATH = Path(__file__).resolve().parents[1] / "scripts" / "econ_doc_lint.py"
 _spec = importlib.util.spec_from_file_location("econ_doc_lint", LINT_PATH)
 lint_module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(lint_module)

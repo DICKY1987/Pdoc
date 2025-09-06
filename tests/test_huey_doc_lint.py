@@ -5,7 +5,7 @@ import textwrap
 
 import pytest
 
-LINT_PATH = Path(__file__).resolve().parents[1] / "pdoc" / "huey_doc_lint.py"
+LINT_PATH = Path(__file__).resolve().parents[1] / "scripts" / "huey_doc_lint.py"
 _spec = importlib.util.spec_from_file_location("huey_doc_lint", LINT_PATH)
 lint_module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(lint_module)

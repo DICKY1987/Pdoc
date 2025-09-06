@@ -36,7 +36,7 @@ pytest tests/test_*_lint.py
 - Version-controlled patches
 
 ### ✅ **Cross-Reference Integrity**
-- Master cross-reference matrix (`cross_refs.yml`)
+- Master cross-reference matrix (`config/cross_refs.yml`)
 - Automated validation of section links
 - Shared definition enforcement
 
@@ -79,7 +79,7 @@ pytest tests/test_*_lint.py
 
 ### **Adding New Shared Schema**
 ```yaml
-# Add to cross_refs.yml
+# Add to config/cross_refs.yml
 new_concept:
   huey_p_section: "§X.Y"
   backend_section: "§X.Y" 

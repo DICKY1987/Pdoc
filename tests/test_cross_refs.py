@@ -10,12 +10,12 @@ _spec.loader.exec_module(validator_module)
 
 
 def test_cross_refs_valid():
-    validator = validator_module.CrossReferenceValidator("cross_refs.yml", Path(__file__).resolve().parents[1])
+    validator = validator_module.CrossReferenceValidator("config/cross_refs.yml", Path(__file__).resolve().parents[1])
     assert validator.validate_references() == []
 
 
 def test_cross_refs_missing_shared(tmp_path):
-    data = json.loads(Path("cross_refs.yml").read_text())
+    data = json.loads(Path("config/cross_refs.yml").read_text())
     data["identifier_systems"]["cal8_format"]["shared_definition"] = "schemas/missing.md"
     temp = tmp_path / "cross_refs.yml"
     temp.write_text(json.dumps(data))

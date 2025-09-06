@@ -1,6 +1,6 @@
 """Comprehensive change request management utility.
 
-This script tracks change requests in ``change_requests.json`` using JSON.
+This script tracks change requests in ``config/change_requests.json`` using JSON.
 It supports adding requests, attaching impact analysis, starting review
 cycles, and resolving requests. Requests progress through the states:
 ``open`` → ``in_review`` → ``resolved``.
@@ -34,7 +34,7 @@ from typing import Any, Dict, Iterable, List
 
 import json
 
-DEFAULT_DB = Path(__file__).resolve().parents[1] / "change_requests.json"
+DEFAULT_DB = Path(__file__).resolve().parents[1] / "config" / "change_requests.json"
 
 
 def load_requests(db_path: Path = DEFAULT_DB) -> List[Dict[str, Any]]:
