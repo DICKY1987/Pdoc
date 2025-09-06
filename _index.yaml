@@ -1,0 +1,18 @@
+econ:
+- 01_scope_overview.md
+- 02_integration_comm.md
+- 03_identifier_systems.md
+- 04_signal_csv_contracts.md
+- 05_calendar_ingest_transform.md
+- 06_reentry_subsystem.md
+- 07_risk_portfolio_controls.md
+- 08_monitoring_testing_gov.md
+huey:
+- 01_scope_principles.md
+- 02_runtime_architecture.md
+- 03_plugin_model.md
+- 04_layout_navigation.md
+- 05_tabs_panels_controls.md
+- 06_signal_model_mapping.md
+- 07_transport_bridge_contracts.md
+- 08_qc_acceptance_telemetry.md
